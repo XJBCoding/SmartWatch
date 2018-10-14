@@ -53,6 +53,7 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.util.ArrayList;
+import java.util.List;
 
 import static android.provider.ContactsContract.CommonDataKinds.Website.URL;
 
@@ -104,7 +105,8 @@ public class MainActivity extends AppCompatActivity implements MessageDialogFrag
     private TextView mText;
     private ResultAdapter mAdapter;
     private RecyclerView mRecyclerView;
-    private String url = "http://425f597e.ngrok.io";
+    //private String url = "http://425f597e.ngrok.io";
+    private String url = "http://192.168.0.16";
     private final ServiceConnection mServiceConnection = new ServiceConnection() {
 
         @Override
@@ -125,8 +127,8 @@ public class MainActivity extends AppCompatActivity implements MessageDialogFrag
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        Button button;
-        button = (Button) findViewById(R.id.button);
+        Button button1 = (Button) findViewById(R.id.button1);
+        Button button2 = (Button) findViewById(R.id.button2);
 
 
 
@@ -148,31 +150,29 @@ public class MainActivity extends AppCompatActivity implements MessageDialogFrag
         mAdapter = new ResultAdapter(results);
         mRecyclerView.setAdapter(mAdapter);
 
-        button.setOnClickListener(new View.OnClickListener() {
+        button1.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Log.d("test","button is clicked");
-
-                Log.v("test",url);
-                //new HttpGetRequest().execute(url);
+                startVoiceRecorder();
             }
         });
-
+        button2.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                stopVoiceRecorder();
+            }
+        });
     }
 
     @Override
     protected void onStart() {
         super.onStart();
-        Log.v("test",url);
-        MyTaskParams my = new MyTaskParams(url,"send in 'onstart' stage.");
-        new HttpGetRequest().execute(my);
-        // Prepare Cloud Speech API
         bindService(new Intent(this, SpeechService.class), mServiceConnection, BIND_AUTO_CREATE);
 
         // Start listening to voices
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
                 == PackageManager.PERMISSION_GRANTED) {
-            startVoiceRecorder();
+                startVoiceRecorder();
         } else if (ActivityCompat.shouldShowRequestPermissionRationale(this,
                 Manifest.permission.RECORD_AUDIO)) {
             showPermissionMessageDialog();
@@ -286,8 +286,7 @@ public class MainActivity extends AppCompatActivity implements MessageDialogFrag
                                     mText.setText(null);
                                     mAdapter.addResult(text);
                                     Log.v("test",url);
-                                    MyTaskParams my = new MyTaskParams(url,text);
-                                    new HttpGetRequest().execute(my);
+                                    new HttpGetRequest().execute(url,text);
                                     mRecyclerView.smoothScrollToPosition(0);
                                 } else {
                                     mText.setText(text);
@@ -344,24 +343,15 @@ public class MainActivity extends AppCompatActivity implements MessageDialogFrag
         }
 
     }
-    public class MyTaskParams {
-        String url;
-        String data;
-        public MyTaskParams(String url, String data) {
-            this.url = url;
-            this.data = data;
-        }
-    }
-    public class HttpGetRequest extends AsyncTask<MyTaskParams, Void, String> {
-        public static final String REQUEST_METHOD = "GET";
+    public class HttpGetRequest extends AsyncTask<String, Void, String> {
         public static final int READ_TIMEOUT = 15000;
         public static final int CONNECTION_TIMEOUT = 15000;
         @Override
-        protected String doInBackground(MyTaskParams... params){
-            String stringUrl = params[0].url;
+        protected String doInBackground(String... params){
+            String stringUrl = params[0];
             String result = "";
             String inputLine;
-            String data = params[0].data;
+            String data = params[1];
             OutputStream out = null;
             Log.v("trying",stringUrl);
             try {
@@ -373,11 +363,10 @@ public class MainActivity extends AppCompatActivity implements MessageDialogFrag
                         myUrl.openConnection();
                 Log.v("connection","created");
                 //Set methods and timeouts
-                connection.setRequestMethod(REQUEST_METHOD);
                 connection.setReadTimeout(READ_TIMEOUT);
                 connection.setConnectTimeout(CONNECTION_TIMEOUT);
                 connection.setRequestMethod("POST");
-                connection.disconnect();
+
                 out = new BufferedOutputStream(connection.getOutputStream());
                 BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(out, "UTF-8"));
                 writer.write(data);
@@ -387,11 +376,11 @@ public class MainActivity extends AppCompatActivity implements MessageDialogFrag
                 Log.v("trying to ","connect");
                 //Connect to our url
                 connection.connect();
+
                 //int response = connection.getResponseCode();
                 //Log.d("response is",""+response);
                 //Create a new InputStreamReader
-                InputStreamReader streamReader = new
-                InputStreamReader(connection.getInputStream());
+                InputStreamReader streamReader = new InputStreamReader(connection.getInputStream());
                 //Create a new buffered reader and String Builder
                 BufferedReader reader = new BufferedReader(streamReader);
                 StringBuilder stringBuilder = new StringBuilder();
@@ -404,6 +393,7 @@ public class MainActivity extends AppCompatActivity implements MessageDialogFrag
                 streamReader.close();
                 //Set our result equal to our stringBuilder
                 result = stringBuilder.toString();
+                connection.disconnect();
             }catch (Exception e){
                 e.printStackTrace();
 
@@ -413,7 +403,12 @@ public class MainActivity extends AppCompatActivity implements MessageDialogFrag
         @Override
         protected void onPostExecute(String result) {
             super.onPostExecute(result);
-            Toast.makeText(getApplicationContext(), "The result from server:" + result, Toast.LENGTH_SHORT).show();
+            if(result.length() > 0){
+                Toast.makeText(getApplicationContext(), "The result from server:" + result, Toast.LENGTH_SHORT).show();
+            }else{
+                Toast.makeText(getApplicationContext(), "Cannot connect to Server!", Toast.LENGTH_SHORT).show();
+
+            }
             Log.v("result",result);
         }
     }
