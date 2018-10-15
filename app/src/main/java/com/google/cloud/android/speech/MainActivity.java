@@ -106,7 +106,7 @@ public class MainActivity extends AppCompatActivity implements MessageDialogFrag
     private ResultAdapter mAdapter;
     private RecyclerView mRecyclerView;
     //private String url = "http://425f597e.ngrok.io";
-    private String url = "http://192.168.0.16";
+    private String url = "http://209.2.236.206";
     private final ServiceConnection mServiceConnection = new ServiceConnection() {
 
         @Override
